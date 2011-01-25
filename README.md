@@ -17,11 +17,10 @@ Apart from that, just testing really.
 
 INSTALLATION
 ==============
-1. Add the gem to your Gemfile, and run bundle install.
-    gem 'import_products, :git => 'git://github.com/joshmcarthur/spree-import-products.git'
-    bundle install
-2. 'Install' the extension - copy a migration and an initializer
-    rake import_products:install
+** This extension has been converted to work with spree 0.11.x versions **
+** *For spree versions > 0.30.0 go to html://github.com/joshmcarthur/spree-import-products* **
+1. script/extension install git://github.com/mosaic/spree-import-products.git ('Install' the extension - copy a migration and an initializer
+    rake import_products:install)
 3. rake db:migrate
 4. Configure the extension to suit your application by changing config variables in config/initializers/import_product_settings.rb
 5. Run application!
