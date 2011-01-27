@@ -45,4 +45,10 @@ class ImportProductSettings
     #Set default Tax Category (this will be created if it doesn't exist)
     #However, you may want to setup your tax setup before using this extension
     DEFAULT_TAX_CATEGORY = "PA Only"
+
+    #Set default HTML decoding settings
+    #If set to true, all names and descriptions will convert
+    #&amp; to &, &gt; to >, etc.
+    HTML_DECODE_NAMES = false
+    HTML_DECODE_DESCRIPTIONS = true
 end

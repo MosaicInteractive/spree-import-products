@@ -10,6 +10,7 @@ class ProductImport < ActiveRecord::Base
   
   require 'fastercsv'
   require 'pp'
+  require 'htmlentities'
   
   ## Data Importing:
   # Supplier, room and category are all taxonomies to be found (or created) and associated
@@ -23,6 +24,9 @@ class ProductImport < ActiveRecord::Base
     begin
       #Get products *before* import - 
       @products_before_import = Product.all
+
+      #Setup HTML decoder
+      coder = HTMLEntities.new
 
       columns = ImportProductSettings::COLUMN_MAPPINGS
       rows = FasterCSV.read(self.data_file.path)
@@ -40,7 +44,12 @@ class ProductImport < ActiveRecord::Base
           product_obj.name = "No-name product #{nameless_product_count}"
           nameless_product_count += 1
         else
-          product_obj.name = row[columns['Name']]
+          #Decode HTML for names and/or descriptions if necessary
+          if ImportProductSettings::HTML_DECODE_NAMES
+            product_obj.name = coder.decode(row[columns['Name']])
+          else
+            product_obj.name = row[columns['Name']]
+          end
         end
         product_obj.sku = row[columns['SKU']] || product_obj.name.gsub(' ', '_')
         product_obj.price = product_obj.master_price = row[columns['Master Price']] || 0.0
@@ -50,7 +59,12 @@ class ProductImport < ActiveRecord::Base
         product_obj.height = row[columns['Height']] || 0.0
         product_obj.depth = row[columns['Depth']] || 0.0
         product_obj.width = row[columns['Width']] || 0.0
-        product_obj.description = row[columns['Description']]
+        #Decode HTML for descriptions if needed
+        if ImportProductSettings::HTML_DECODE_DESCRIPTIONS
+          product_obj.description = coder.decode(row[columns['Description']])
+        else
+          product_obj.description = row[columns['Description']]
+        end
         product_obj.meta_description = row[columns['Meta Description']]
         product_obj.meta_keywords = row[columns['Meta Keyword']]
         
@@ -73,11 +87,7 @@ class ProductImport < ActiveRecord::Base
         end
 
         #Now we have all but images and taxons loaded
-        if Taxon.find_by_name(row[columns['Category']])
-          associate_taxon(row[columns['Category']], row[columns['Category']], product_obj)
-        else
-          associate_taxon('Category', row[columns['Category']], product_obj)
-        end
+        associate_taxon('Category', row[columns['Category']], product_obj)
 
         #Just images 
         find_and_attach_image(row[columns['Image Main']], product_obj)
@@ -155,18 +165,29 @@ class ProductImport < ActiveRecord::Base
   def associate_taxon(taxonomy_name, taxon_name, product)
     master_taxon = Taxonomy.find_by_name(taxonomy_name)
     
-    if master_taxon.nil?
-      master_taxon = Taxonomy.create(:name => taxonomy_name)
-      log("Could not find Category taxonomy, so it was created.", :warn)
+    #Find all existing taxons and assign them to the product
+    existing_taxons = Taxon.find_all_by_name(taxon_name)
+    if existing_taxons and !existing_taxons.empty?
+      existing_taxons.each do |taxon|
+        product.taxons << taxon
+      end
+    else
+      #Create any taxons that don't exist
+      master_taxon = Taxonomy.find_by_name(taxonomy_name)
+      if master_taxon.nil?
+        master_taxon = Taxonomy.create(:name => taxonomy_name)
+        log("Could not find Category taxonomy, so it was created.", :warn)
+      end
+
+      taxon = Taxon.find_or_create_by_name_and_parent_id_and_taxonomy_id(
+        taxon_name,
+        master_taxon.root.id,
+        master_taxon.id
+      )
+
+      product.taxons << taxon if taxon.save
     end
-    
-    taxon = Taxon.find_or_create_by_name_and_parent_id_and_taxonomy_id(
-      taxon_name, 
-      master_taxon.root.id, 
-      master_taxon.id
-    )
-    
-    product.taxons << taxon if taxon.save
+
   end
 
   

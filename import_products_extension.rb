@@ -13,6 +13,7 @@ class ImportProductsExtension < Spree::Extension
 
   def self.require_gems(config)
     config.gem "fastercsv"
+    config.gem "htmlentities"
   end
 
   def activate
