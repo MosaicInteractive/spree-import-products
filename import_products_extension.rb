@@ -2,8 +2,8 @@
 # require_dependency 'application'
 
 #### REMOVE ####
-require 'spree_core'
-require 'import_products_hooks'
+#require 'spree_core'
+#require 'import_products_hooks'
 #### END REMOVE ####
 
 class ImportProductsExtension < Spree::Extension

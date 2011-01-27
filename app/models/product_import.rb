@@ -27,43 +27,70 @@ class ProductImport < ActiveRecord::Base
       columns = ImportProductSettings::COLUMN_MAPPINGS
       rows = FasterCSV.read(self.data_file.path)
       log("Importing products for #{self.data_file_file_name} began at #{Time.now}")
+      nameless_product_count = 0
+
       rows[ImportProductSettings::INITIAL_ROWS_TO_SKIP..-1].each do |row|
-        product_information = {}
-        
-        #Easy ones first
-        product_information[:sku] = row[columns['SKU']]
-        product_information[:name] = row[columns['Name']]
-        product_information[:price] = row[columns['Master Price']]
-        product_information[:cost_price] = row[columns['Cost Price']]
-        product_information[:available_on] = DateTime.now - 1.day #Yesterday to make SURE it shows up
-        product_information[:weight] = row[columns['Weight']]
-        product_information[:height] = row[columns['Height']]
-        product_information[:depth] = row[columns['Depth']]
-        product_information[:width] = row[columns['Width']]
-        product_information[:description] = columns['Description']
-        
 
         #Create the product skeleton - should be valid
-        product_obj = Product.new(product_information)
+        product_obj = Product.new()
+        
+        #Easy ones first
+        if row[columns['Name']].blank?
+          log("Product with no name: #{row[columns['Description']]}")
+          product_obj.name = "No-name product #{nameless_product_count}"
+          nameless_product_count += 1
+        else
+          product_obj.name = row[columns['Name']]
+        end
+        product_obj.sku = row[columns['SKU']] || product_obj.name.gsub(' ', '_')
+        product_obj.price = product_obj.master_price = row[columns['Master Price']] || 0.0
+        #product_obj.cost_price = row[columns['Cost Price']]
+        product_obj.available_on = DateTime.now - 1.day #Yesterday to make SURE it shows up
+        product_obj.weight = row[columns['Weight']] || 0.0
+        product_obj.height = row[columns['Height']] || 0.0
+        product_obj.depth = row[columns['Depth']] || 0.0
+        product_obj.width = row[columns['Width']] || 0.0
+        product_obj.description = row[columns['Description']]
+        product_obj.meta_description = row[columns['Meta Description']]
+        product_obj.meta_keywords = row[columns['Meta Keyword']]
+        
+
+        
+        #Assign a default shipping category
+        product_obj.shipping_category = ShippingCategory.find_or_create_by_name(ImportProductSettings::DEFAULT_SHIPPING_CATEGORY)
+        product_obj.tax_category = TaxCategory.find_or_create_by_name(ImportProductSettings::DEFAULT_TAX_CATEGORY)
+
         unless product_obj.valid?
-          log("A product could not be imported - here is the information we have:\n #{ pp product_information}", :error)
+          log("A product could not be imported - here is the information we have:\n #{ pp product_obj.attributes}", :error)
           next
         end
         
         #Save the object before creating asssociated objects
-        product_obj.save
+        product_obj.save!
+
+        unless product_obj.master
+          log("[ERROR] No variant set for: #{product_obj.name}")
+        end
 
         #Now we have all but images and taxons loaded
-        associate_taxon('Category', row[columns['Category']], product_obj)
-        
+        if Taxon.find_by_name(row[columns['Category']])
+          associate_taxon(row[columns['Category']], row[columns['Category']], product_obj)
+        else
+          associate_taxon('Category', row[columns['Category']], product_obj)
+        end
+
         #Just images 
         find_and_attach_image(row[columns['Image Main']], product_obj)
-        find_and_attach_image(row[columns['Image 2']], product_obj)
-        find_and_attach_image(row[columns['Image 3']], product_obj)
-        find_and_attach_image(row[columns['Image 4']], product_obj)
+        #find_and_attach_image(row[columns['Image 2']], product_obj)
+        #find_and_attach_image(row[columns['Image 3']], product_obj)
+        #find_and_attach_image(row[columns['Image 4']], product_obj)
+
+        #Save master variant, for some reason saving product with price set above
+        #doesn't create the master variant
+        log("Master Variant saved for #{product_obj.sku}") if product_obj.master.save!
 
         #Return a success message
-        log("#{product_obj.name} successfully imported.\n")
+        log("[#{product_obj.sku}] #{product_obj.name}($#{product_obj.master.price}) successfully imported.\n") if product_obj.save
       end
       
       if ImportProductSettings::DESTROY_ORIGINAL_PRODUCTS_AFTER_IMPORT

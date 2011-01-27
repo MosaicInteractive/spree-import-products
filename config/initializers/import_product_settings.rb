@@ -16,11 +16,10 @@ class ImportProductSettings
       'Width' => 6,
       'Depth' => 7,
       'Image Main' => 8,
-      'Image 2' => 9,
-      'Image 3' => 10,
-      'Image 4' => 11,
-      'Description' => 12,
-      'Category' => 13
+      'Description' => 9,
+      'Category' => 10,
+      'Meta Description' => 11,
+      'Meta Keyword' => 12
     }
 
     #Where are you keeping your master images?
@@ -38,5 +37,12 @@ class ImportProductSettings
     LOGFILE = File.join(Rails.root, '/log/', "import_products_#{Rails.env}.log")
     
     #Set this to true if you want to destroy your existing products after you have finished importing products
-    DESTROY_ORIGINAL_PRODUCTS_AFTER_IMPORT = false
+    DESTROY_ORIGINAL_PRODUCTS_AFTER_IMPORT = true
+
+    #Set default Shipping Category (this will be created if it doesn't already exist
+    DEFAULT_SHIPPING_CATEGORY = "North America"
+    
+    #Set default Tax Category (this will be created if it doesn't exist)
+    #However, you may want to setup your tax setup before using this extension
+    DEFAULT_TAX_CATEGORY = "PA Only"
 end
