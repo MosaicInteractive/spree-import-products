@@ -100,7 +100,13 @@ class ProductImport < ActiveRecord::Base
   # size/color options
   def create_variant_for(product, options = {:with => {}})
     return if options[:with].nil?
+    variant = product.variants.find_by_sku(options[:with][:sku]) || product.variants.new if IMPORT_PRODUCT_SETTINGS[:update_existing]
     variant = product.variants.new
+
+    #Check to see if we should update existing products, and check if it's master
+    if IMPORT_PRODUCT_SETTINGS[:update_existing] and options[:with][IMPORT_PRODUCT_SETTINGS[:is_master_field]]
+      return create_product_using(options[:with])
+    end
 
     #Remap the options - oddly enough, Spree's product model has master_price and cost_price, while
     #variant has price and cost_price.
@@ -151,7 +157,8 @@ class ProductImport < ActiveRecord::Base
   # product we have gathered, and creating the product and related objects.
   # It also logs throughout the method to try and give some indication of process.
   def create_product_using(params_hash)
-    product = Product.new
+    product = Product.find_by_permalink(params_hash[:permalink]) || Product.new if IMPORT_PRODUCT_SETTINGS[:update_existing]
+    product = Product.new unless IMPORT_PRODUCT_SETTINGS[:update_existing]
 
     #The product is inclined to complain if we just dump all params
     # into the product (including images and taxonomies).

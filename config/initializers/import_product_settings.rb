@@ -27,7 +27,9 @@ IMPORT_PRODUCT_SETTINGS = {
   :first_row_is_headings => true, #Reads column names from first row if set to true.
   :create_variants => true, #Compares products and creates a variant if that product already exists.
   :variant_comparator_field => :permalink, #Which product field to detect duplicates on
+  :update_existing => true, #Update existing variants/products with new product information
   :multi_domain_importing => true, #If Spree's multi_domain extension is installed, associates products with store
   :store_field => :store_code #Which field of the column mappings contains either the store id or store code?
+  :is_master_field => :is_master #Which field of the column mappings specifies a master product (for updating existing master products)
 }
 
