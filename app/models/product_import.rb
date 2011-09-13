@@ -104,7 +104,7 @@ class ProductImport < ActiveRecord::Base
     variant = product.variants.new
 
     #Check to see if we should update existing products, and check if it's master
-    if IMPORT_PRODUCT_SETTINGS[:update_existing] and options[:with][IMPORT_PRODUCT_SETTINGS[:is_master_field]]
+    if IMPORT_PRODUCT_SETTINGS[:update_existing] and options[:with][IMPORT_PRODUCT_SETTINGS[:is_master_field]].to_i
       return create_product_using(options[:with])
     end
 
